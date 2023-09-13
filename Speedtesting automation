@@ -44,12 +44,8 @@ public class SpeedTesting {
         	WebElement customElements = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("(//div[@class='lh-metric__value'])[" + (i + 1) + "]")));
         	String metrics = customElements.getText();
         	System.out.println(customMetrics[i] + ": " + metrics);
-        	
-        	//clicking the desktop button 
-        	  WebElement desktopButton = driver.findElement(By.xpath(("(//span[@class='VfPpkd-YVzG2b' and @jsname='ksKsZd'])[2]")));
-              desktopButton.click();
-	
-       
+        
+
     }
         try {
             TimeUnit.SECONDS.sleep(5);
