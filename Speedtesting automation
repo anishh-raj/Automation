@@ -1,5 +1,7 @@
 package SeleniumTest;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -8,12 +10,15 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-public class Test2 {
+import java.io.*;
+
+public class Testing2 {
     private static WebDriver driver;
-    private static WebDriverWait wait; 
+    private static WebDriverWait wait;
+    private static Workbook workbook;
+    private static Sheet sheet;
 
     public static WebDriver setupDriver() {
-    	
         ChromeOptions opt = new ChromeOptions();
         opt.addArguments("--disable-notifications");
         opt.addArguments("--remote-allow-origins=*");
@@ -22,84 +27,127 @@ public class Test2 {
 
         return new ChromeDriver(opt);
     }
-    
-    
-    public static void PrintAssessmentStatus(String assessmentType) {
-        String xpathExpression; // Declaring the variable 
-
-        if ("desktop".equals(assessmentType)) {
-            xpathExpression = "(//span[@class='bXhnD'])[1]";
-        } else if ("mobile".equals(assessmentType)) { 
-            xpathExpression = "(//span[@class='ZwKnne'])[1]"; 
-        } else {
-            System.out.println("Invalid assessment type: " + assessmentType);
-            return;
-        }
-
-        WebElement assessmentStatusElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(xpathExpression)));
-        String assessmentStatus = assessmentStatusElement.getText();
-
-        System.out.println("Core Web Vitals Assessment(" + assessmentType + "): " + assessmentStatus);
-    }
-    
-    
-
-
-    public static void PrintMetrics(String[] metricLabels, int startIndex) {
-        for (int i = 0; i < metricLabels.length; i++) {
-            WebElement metricElement = null;
-            metricElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    By.xpath("(//span[@class='Ykn2A YznLle' or @class='Ykn2A LR2yK'])[" + (i + startIndex) + "]")));
-            String metricValue = metricElement.getText();
-            System.out.println(metricLabels[i] + ": " + metricValue);
-        }
-    }
-
-    
-    public static void PrintCustomMetrics(String[] customMetrics, int startIndex) {
-        for (int i = 0; i < customMetrics.length; i++) {
-            WebElement customElement = null;
-            customElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
-                    By.xpath("(//div[@class='lh-metric__value'])[" + (i + startIndex) + "]")));
-            String metricValue = customElement.getText();
-            System.out.println(customMetrics[i] + ": " + metricValue);
-        }
-    }
 
     public static void main(String[] args) {
         driver = setupDriver();
-        wait = new WebDriverWait(driver, 100); 
+        wait = new WebDriverWait(driver, 100); // Adjust the wait timeout as needed
 
         driver.get("https://pagespeed.web.dev/");
 
-        WebElement urlInput = driver.findElement(By.id("i4"));
-        urlInput.sendKeys("stattimes.com");
+        WebElement urlInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("i4")));
+        urlInput.sendKeys("https://www.livelaw.in");
 
-        WebElement analyzeButton = driver.findElement(By.xpath("//span[text()='Analyze']"));
+        WebElement analyzeButton = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//span[text()='Analyze']")));
         analyzeButton.click();
 
         wait.until(ExpectedConditions.urlContains("https://pagespeed.web.dev/analysis/"));
 
-  // Mobile assessment status     
-        PrintAssessmentStatus("mobile");
+        // Create a new Excel workbook
+        workbook = new XSSFWorkbook();
+        sheet = workbook.createSheet("Web Metrics");
+        // Mobile assessment status
+        PrintAssessmentStatus("mobile", 1, 0); // Specify rowIndex as 0 
 
-  // Mobile Details
-        String[] metricLabels = {"LCP", "FID", "CLS", "FCP", "INP", "TTFB"};
-        PrintMetrics(metricLabels, 1);
 
-        String[] customMetrics = {"First Contentful Paint", "Largest Contentful Paint", "Total Blocking Time", "Cumulative Layout Shift", "Speed Index"};
-        PrintCustomMetrics(customMetrics, 1);
+        // Mobile Details
+        String[] PrintMetrics = {
+            "Largest Contentful Paint (LCP)",
+            "First Input Delay (FID)",
+            "Cumulative Layout Shift (CLS)",
+            "First Contentful Paint (FCP)",
+            "Interaction to Next Paint (INP)",
+            "Time to First Byte (TTFB)"
+        };
 
-  // Clicking the desktop button
-        WebElement desktopButton = driver.findElement(By.xpath("(//span[@class='VfPpkd-YVzG2b' and @jsname='ksKsZd'])[2]"));
+        String[] CustomMetrics = {
+            "First Contentful Paint",
+            "Largest Contentful Paint",
+            "Total Blocking Time",
+            "Cumulative Layout Shift",
+            "Speed Index"
+        };
+
+        PrintMetrics(PrintMetrics, 1,1);
+        CustomMetrics(CustomMetrics, 1,7);
+
+        // Clicking the desktop button
+        WebElement desktopButton = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//span[@class='VfPpkd-YVzG2b' and @jsname='ksKsZd'])[2]")));
         desktopButton.click();
 
-   // Print desktop assessment status
-        PrintAssessmentStatus("desktop");
+     // Desktop assessment status
+        PrintAssessmentStatus("desktop", 3, 13); 
 
-   // Desktop Details
-        PrintMetrics(metricLabels, 7);
 
-        PrintCustomMetrics(customMetrics, 6);
+     // Desktop Details
+        PrintMetrics(PrintMetrics, 13, 14); 
+     // Desktop Details
+        CustomMetrics(CustomMetrics, 2,20 ); 
+
+        // Save the Excel file
+        String xlsxFilePath = "/Users/apple/Desktop/Report/web_metrics123.xlsx";
+
+        try (OutputStream outputStream = new FileOutputStream(xlsxFilePath)) {
+            workbook.write(outputStream);
+            System.out.println("Excel file has been created successfully.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // Quit the WebDriver
+        driver.quit();
     }
-}
+
+    public static void createRow(int rowNum, String[] data) {
+        Row row = sheet.createRow(rowNum);
+        for (int i = 0; i < data.length; i++) {
+            Cell cell = row.createCell(i);
+            cell.setCellValue(data[i]);
+        }
+    }
+
+    public static void PrintAssessmentStatus(String assessmentType, int indexForPassFail, int rowIndex) {
+        if ("desktop".equals(assessmentType) || "mobile".equals(assessmentType)) {
+            WebElement assessmentStatusElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                By.xpath("(//div[contains(text(),'Core Web Vitals Assessment:')])[" + indexForPassFail + "]/span[1]")));
+            String assessmentStatus = assessmentStatusElement.getText();
+            System.out.println("Core Web Vitals Assessment(" + assessmentType + "): " + assessmentStatus);
+
+            // Write to Excel in the specified row index
+            createRow(rowIndex, new String[]{"Core Web Vitals Assessment(" + assessmentType + "):", assessmentStatus});
+        } else {
+            System.out.println("Invalid assessment type: " + assessmentType);
+        }
+    }
+
+
+    public static void PrintMetrics(String[] Printmetrics, int index, int rowIndex) {
+        for (int i = 0; i < Printmetrics.length; i++) {
+            String PrintMetrics = "//a[contains(text(),'" + Printmetrics[i] + "')]/following::span[contains(@class, 'f49ZR')][" + index + "]/span";
+
+            WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(PrintMetrics)));
+            String text = element.getText();
+            System.out.println(Printmetrics[i] + ": " + text);
+
+            // Write to Excel in the specified row index
+            createRow(rowIndex + i, new String[]{Printmetrics[i] + ":", text});
+        }
+    }
+
+    public static void CustomMetrics(String[] customMetrics, int index, int rowIndex) {
+        for (int i = 0; i < customMetrics.length; i++) {
+            String xpathExpression = "(//span[text()='" + customMetrics[i] + "']/following::div[1])[" + index + "]";
+
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpathExpression)));
+            WebElement element = driver.findElement(By.xpath(xpathExpression));
+            String text = element.getText();
+            System.out.println(customMetrics[i] + ": " + text);
+
+            // Write to Excel in the specified row index
+            createRow(rowIndex + i, new String[]{customMetrics[i] + ":", text});
+        }
+    }
+    
+};
+
+  
+
+   
